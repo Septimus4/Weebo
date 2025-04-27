@@ -1,0 +1,56 @@
+name: Local Assistant
+version: 1.0.0
+schema: v1
+
+environment:
+  - CUDA_VISIBLE_DEVICES=0
+  - LLAMA_CACHE_TYPE_K=q4_0          # quantised KV (effective for DeepSeek)
+  - LLAMA_CACHE_TYPE_V=q4_0
+  - LLAMA_N_CTX=32768                # global max, Codestral will request 12 k
+  - LLAMA_N_GPU_LAYERS=-1            # pin all layers to GPU by default
+  - LLAMA_OPENBLAS_NUM_THREADS=16
+
+models:
+  - name: Codestral
+    provider: ollama
+    model: hf.co/SanctumAI/Codestral-22B-v0.1-GGUF:Q6_K
+    roles: [edit, apply, autocomplete]
+    gpuLayers: -1
+    contextWindow: 12288        # 12 k tokens fully on‑GPU
+    numThreads: 16
+
+  - name: DeepSeek R1
+    provider: ollama
+    model: hf.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF:Q5_K_M
+    roles: [chat]
+    gpuLayers: -1
+    contextWindow: 32768
+    cacheType:
+      k: q4_0
+      v: q4_0
+    numThreads: 16
+    env:
+      LLAMA_NO_KV_OFFLOAD: "1"
+
+  - name: Nomic Embed
+    provider: ollama
+    model: nomic-embed-text:latest
+    roles: [embed]
+
+context:
+  - provider: code
+  - provider: currentFile
+  - provider: docs
+  - provider: diff
+  - provider: terminal
+  - provider: problems
+  - provider: folder
+  - provider: codebase
+  - provider: url
+  - provider: web
+    params:
+      n: 5
+  - provider: commit
+    params:
+      Depth: 50
+      LastXCommitsDepth: 10
