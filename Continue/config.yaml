@@ -4,39 +4,100 @@ schema: v1
 
 environment:
   - CUDA_VISIBLE_DEVICES=0
-  - LLAMA_CACHE_TYPE_K=q4_0          # quantised KV (effective for DeepSeek)
-  - LLAMA_CACHE_TYPE_V=q4_0
-  - LLAMA_N_CTX=32768                # global max, Codestral will request 12 k
-  - LLAMA_N_GPU_LAYERS=-1            # pin all layers to GPU by default
+  - LLAMA_CACHE_TYPE_K=q4_K
+  - LLAMA_CACHE_TYPE_V=q4_K
   - LLAMA_OPENBLAS_NUM_THREADS=16
 
 models:
-  - name: Codestral
+  # ---------- 1 Chat–Thinking mode ------------
+  - name: Qwen3-Chat-Think
     provider: ollama
-    model: hf.co/SanctumAI/Codestral-22B-v0.1-GGUF:Q6_K
-    roles: [edit, apply, autocomplete]
-    gpuLayers: -1
-    contextWindow: 12288        # 12 k tokens fully on‑GPU
-    numThreads: 16
+    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
+    roles: [ chat ]
+    temperature: 0.6
+    top_p: 0.95
+    top_k: 20
+    presence_penalty: 1.0
+    maxTokens: 2048
+    options:
+      num_ctx: 32768
+    promptTemplates:
+      chat: |
+        <|im_start|>system
+        You are Qwen3 in **thinking** mode. Use chain-of-thought to solve tasks, but wrap the thoughts inside a single <think>...</think> block, then output the final answer.
+        <|im_end|>
+        {{{history}}}
+        <|im_start|>user
+        {{{input}}}
+        <|im_end|>
+        <|im_start|>assistant
+        /think
+        <|im_end|>
+        <|im_start|>assistant
 
-  - name: DeepSeek R1
+  # ---------- 3 Autocomplete -------------------
+  - name: Qwen3-Autocomplete
     provider: ollama
-    model: hf.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF:Q5_K_M
-    roles: [chat]
-    gpuLayers: -1
-    contextWindow: 32768
-    cacheType:
-      k: q4_0
-      v: q4_0
-    numThreads: 16
+    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
+    roles: [ autocomplete ]
+    temperature: 0.05
+    top_p: 0.9
+    maxTokens: 128
+    options:
+      num_ctx: 32768
+    promptTemplates:
+      autocomplete: |
+        <|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>
+
+  # ---------- 4 Edit ---------------------------
+  - name: Qwen3-Edit
+    provider: ollama
+    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
+    roles: [ edit ]
+    temperature: 0.1
+    top_p: 0.9
+    maxTokens: 512
+    options:
+      num_ctx: 32768
+
+  # ---------- 5 Apply --------------------------
+  - name: Qwen3-Apply
+    provider: ollama
+    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
+    roles: [ apply ]
+    temperature: 0.1
+    top_p: 0.9
+    maxTokens: 512
+    options:
+      num_ctx: 32768
+    promptTemplates:
+      apply: |
+        Original code:
+        ```{{{language}}}
+        {{{original_code}}}
+        ```
+        After changes:
+        ```{{{language}}}
+        {{{new_code}}}
+        ```
+        Return ONLY the final file contents, no commentary.
+
+  # ---------- 6 Reranker (CPU) -----------------
+  - name: BGE Reranker Large
+    provider: ollama
+    model: linux6200/bge-reranker-v2-m3
+    roles: [ rerank ]
     env:
-      LLAMA_NO_KV_OFFLOAD: "1"
+      SILICONFLOW_DEVICE: "cpu"
+      OMP_NUM_THREADS: "16"
 
+  # ---------- 7 Embedder -----------------------
   - name: Nomic Embed
     provider: ollama
     model: nomic-embed-text:latest
-    roles: [embed]
+    roles: [ embed ]
 
+# ============ CONTEXT SOURCES ===============
 context:
   - provider: code
   - provider: currentFile
