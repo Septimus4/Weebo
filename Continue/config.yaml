@@ -36,18 +36,17 @@ models:
         <|im_start|>assistant
 
   # ---------- 3 Autocomplete -------------------
-  - name: Qwen3-Autocomplete
+  - name: Codestral‑22B
     provider: ollama
-    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
-    roles: [ autocomplete ]
-    temperature: 0.05
-    top_p: 0.9
-    maxTokens: 128
-    options:
-      num_ctx: 32768
-    promptTemplates:
-      autocomplete: |
-        <|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>
+    model: hf.co/lmstudio-community/Codestral-22B-v0.1-GGUF:Q5_K_M
+    roles:
+      - autocomplete
+    template: mistral
+    contextLength: 8192
+    parameters:
+      temperature: 0.2
+      top_k: 40
+      top_p: 0.9
 
   # ---------- 4 Edit ---------------------------
   - name: Qwen3-Edit
