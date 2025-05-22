@@ -5,7 +5,7 @@ import openai
 from openai.types.chat import ChatCompletionUserMessageParam
 
 # Configuration constants
-MODEL_NAME = "hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M"
+MODEL_NAME = "qwen3:30b"
 PROMPT = (
     "Explain the quicksort algorithm in Python, "
     "then provide an iterative version."

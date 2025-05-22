@@ -1,102 +1,49 @@
-name: Local Assistant
+name: local-llm-assistant
 version: 1.0.0
 schema: v1
 
 environment:
   - CUDA_VISIBLE_DEVICES=0
-  - LLAMA_CACHE_TYPE_K=q4_K
-  - LLAMA_CACHE_TYPE_V=q4_K
-  - LLAMA_OPENBLAS_NUM_THREADS=16
+  - OLLAMA_KEEP_ALIVE=600
 
 models:
-  # ---------- 1 Chat–Thinking mode ------------
-  - name: Qwen3-Chat-Think
+  # Chat & general editing
+  - name: qwen-chat
     provider: ollama
-    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
-    roles: [ chat ]
-    temperature: 0.6
-    top_p: 0.95
-    top_k: 20
-    presence_penalty: 1.0
-    maxTokens: 2048
-    options:
-      num_ctx: 32768
-    promptTemplates:
-      chat: |
-        <|im_start|>system
-        You are Qwen3 in **thinking** mode. Use chain-of-thought to solve tasks, but wrap the thoughts inside a single <think>...</think> block, then output the final answer.
-        <|im_end|>
-        {{{history}}}
-        <|im_start|>user
-        {{{input}}}
-        <|im_end|>
-        <|im_start|>assistant
-        /think
-        <|im_end|>
-        <|im_start|>assistant
+    model: qwen3:30b
+    roles:
+      - chat
 
-  # ---------- 3 Autocomplete -------------------
-  - name: Codestral‑22B
+  # Fast code completion with FIM support
+  - name: qwen-code
     provider: ollama
-    model: hf.co/lmstudio-community/Codestral-22B-v0.1-GGUF:Q5_K_M
+    model: qwen2.5-coder:14b
     roles:
       - autocomplete
-    template: mistral
-    contextLength: 8192
-    parameters:
-      temperature: 0.2
-      top_k: 40
-      top_p: 0.9
+    defaultCompletionOptions:
+      contextLength: 8112
+      maxTokens: 512
+      temperature: 0.0
+      topP: 0.95
 
-  # ---------- 4 Edit ---------------------------
-  - name: Qwen3-Edit
+  # Slow code edit, apply
+  - name: qwen-code
     provider: ollama
-    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
-    roles: [ edit ]
-    temperature: 0.1
-    top_p: 0.9
-    maxTokens: 512
-    options:
-      num_ctx: 32768
+    model: qwen2.5-coder:14b
+    roles:
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 32768
+      maxTokens: 32768
 
-  # ---------- 5 Apply --------------------------
-  - name: Qwen3-Apply
-    provider: ollama
-    model: hf.co/unsloth/Qwen3-30B-A3B-GGUF:Q5_K_M
-    roles: [ apply ]
-    temperature: 0.1
-    top_p: 0.9
-    maxTokens: 512
-    options:
-      num_ctx: 32768
-    promptTemplates:
-      apply: |
-        Original code:
-        ```{{{language}}}
-        {{{original_code}}}
-        ```
-        After changes:
-        ```{{{language}}}
-        {{{new_code}}}
-        ```
-        Return ONLY the final file contents, no commentary.
-
-  # ---------- 6 Reranker (CPU) -----------------
-  - name: BGE Reranker Large
-    provider: ollama
-    model: linux6200/bge-reranker-v2-m3
-    roles: [ rerank ]
-    env:
-      SILICONFLOW_DEVICE: "cpu"
-      OMP_NUM_THREADS: "16"
-
-  # ---------- 7 Embedder -----------------------
-  - name: Nomic Embed
+  # Text embeddings for vector search
+  - name: nomic-embed
     provider: ollama
     model: nomic-embed-text:latest
-    roles: [ embed ]
+    roles:
+      - embed
 
-# ============ CONTEXT SOURCES ===============
 context:
   - provider: code
   - provider: currentFile
